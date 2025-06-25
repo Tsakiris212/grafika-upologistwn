@@ -151,12 +151,18 @@ window.onload = async function () {
     requestAnimationFrame(animateCamera);
   }
 
-  document.getElementById("startAnimation").onclick = () => {
-  fpsMode = false;
-  animationRunning = true;
-  document.getElementById("startAnimation").innerText = "Stop Animation";
-  animateCamera();
+ document.getElementById("startAnimation").onclick = () => {
+  if (animationRunning) {
+    animationRunning = false;
+    document.getElementById("startAnimation").innerText = "Start Animation";
+  } else {
+    fpsMode = false;
+    animationRunning = true;
+    document.getElementById("startAnimation").innerText = "Stop Animation";
+    animateCamera();
+  }
 };
+σ
 
 
   document.getElementById("startFPS").onclick = () => {
@@ -172,11 +178,16 @@ window.onload = async function () {
   vec3.normalize(right, right);
 
   if (fpsMode) {
-    if (e.key === "w" || e.key === "W") vec3.scaleAndAdd(camPos, camPos, camForward, moveSpeed);
-    if (e.key === "s" || e.key === "S") vec3.scaleAndAdd(camPos, camPos, camForward, -moveSpeed);
-    if (e.key === "a" || e.key === "A") vec3.scaleAndAdd(camPos, camPos, right, -moveSpeed);
-    if (e.key === "d" || e.key === "D") vec3.scaleAndAdd(camPos, camPos, right, moveSpeed);
-  }
+  if (e.key === "w" || e.key === "W") vec3.scaleAndAdd(camPos, camPos, camForward, moveSpeed);
+  if (e.key === "s" || e.key === "S") vec3.scaleAndAdd(camPos, camPos, camForward, -moveSpeed);
+  if (e.key === "a" || e.key === "A") vec3.scaleAndAdd(camPos, camPos, right, -moveSpeed);
+  if (e.key === "d" || e.key === "D") vec3.scaleAndAdd(camPos, camPos, right, moveSpeed);
+}
+
+// ανεξαρτήτως mode, περιστροφή ρομπότ
+if (e.key === "a" || e.key === "A") robotRotation += 0.05;
+if (e.key === "d" || e.key === "D") robotRotation -= 0.05;
+
 
   // Η περιστροφή του ρομπότ γίνεται ανεξαρτήτως mode
   if (e.key === "a" || e.key === "A") robotRotation += 0.05;
