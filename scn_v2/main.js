@@ -1,3 +1,5 @@
+// main.js – Βήμα 11: Animation Mode & FPS Camera Mode με toggle κουμπιά + Περιστροφή Ρομπότ
+
 async function loadShaderSource(url) {
   const response = await fetch(url);
   return await response.text();
@@ -5,15 +7,18 @@ async function loadShaderSource(url) {
 
 window.onload = async function () {
   const mat4 = glMatrix.mat4;
+  const vec3 = glMatrix.vec3;
 
   const canvas = document.getElementById("glcanvas");
   const gl = canvas.getContext("webgl");
+  canvas.setAttribute("tabindex", "0");
+  canvas.focus();
+
   if (!gl) {
     alert("WebGL δεν υποστηρίζεται.");
     return;
   }
 
-  // Φόρτωση shader source
   const vsSource = await loadShaderSource("shaders/vertex.glsl");
   const fsSource = await loadShaderSource("shaders/fragment.glsl");
 
@@ -36,7 +41,6 @@ window.onload = async function () {
   gl.linkProgram(program);
   gl.useProgram(program);
 
-  // Buffers
   const cubeVertices = [
     -0.5, -0.5, -0.5,
      0.5, -0.5, -0.5,
@@ -46,6 +50,11 @@ window.onload = async function () {
      0.5, -0.5,  0.5,
      0.5,  0.5,  0.5,
     -0.5,  0.5,  0.5,
+  ];
+
+  const texCoords = [
+    0, 0,  1, 0,  1, 1,  0, 1,
+    0, 0,  1, 0,  1, 1,  0, 1,
   ];
 
   const cubeIndices = [
@@ -61,102 +70,186 @@ window.onload = async function () {
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cubeVertices), gl.STATIC_DRAW);
 
+  const texCoordBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+
   const indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeIndices), gl.STATIC_DRAW);
 
-  const aPosition = gl.getAttribLocation(program, "aPosition");
-  gl.enableVertexAttribArray(aPosition);
-  gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
-
-  const uProjection = gl.getUniformLocation(program, "uProjection");
-  const uView = gl.getUniformLocation(program, "uView");
-  const uModel = gl.getUniformLocation(program, "uModel");
-  const aColor = gl.getAttribLocation(program, "aColor");
-
-  // Dummy color (χρησιμοποιείται μόνο μία φορά εδώ)
   const colorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-  const oneColor = new Float32Array(8 * 4).fill(1); // 8 κορυφές × RGBA
-  gl.bufferData(gl.ARRAY_BUFFER, oneColor, gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(aColor);
-  gl.vertexAttribPointer(aColor, 4, gl.FLOAT, false, 0, 0);
 
-  // View/Projection setup
-  const projMatrix = mat4.create();
-  mat4.perspective(projMatrix, Math.PI / 3, canvas.width / canvas.height, 0.1, 100);
-  gl.uniformMatrix4fv(uProjection, false, projMatrix);
+  const aPosition = gl.getAttribLocation(program, "aPosition");
+  const aColor = gl.getAttribLocation(program, "aColor");
+  const aTexCoord = gl.getAttribLocation(program, "aTexCoord");
+  const uModel = gl.getUniformLocation(program, "uModel");
+  const uView = gl.getUniformLocation(program, "uView");
+  const uProjection = gl.getUniformLocation(program, "uProjection");
+  const uUseTexture = gl.getUniformLocation(program, "uUseTexture");
+  const uTexture = gl.getUniformLocation(program, "uTexture");
 
-  const viewMatrix = mat4.create();
-  mat4.lookAt(viewMatrix, [6, 6, 6], [0, 0, 0], [0, 0, 1]);
-  gl.uniformMatrix4fv(uView, false, viewMatrix);
+  gl.enableVertexAttribArray(aPosition);
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
 
   gl.enable(gl.DEPTH_TEST);
   gl.clearColor(0.15, 0.15, 0.15, 1.0);
 
-  // ----------- drawCube ------------
-  function drawCube(modelMatrix, color) {
+  const texture = gl.createTexture();
+  const image = new Image();
+  image.src = "textures/grass.jpg";
+  image.onload = function () {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    drawScene();
+  };
+
+  gl.uniform1i(uTexture, 0);
+
+  function drawCube(modelMatrix, color, useTexture = false) {
     gl.uniformMatrix4fv(uModel, false, modelMatrix);
+    gl.uniform1i(uUseTexture, useTexture);
 
-    // Set χρώμα σε κάθε κορυφή
-    const colorArray = [];
-    for (let i = 0; i < 8; i++) colorArray.push(...color);
-    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorArray), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(aColor, 4, gl.FLOAT, false, 0, 0);
+    if (useTexture) {
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+      gl.vertexAttribPointer(aTexCoord, 2, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(aTexCoord);
+    } else {
+      const colorArray = [];
+      for (let i = 0; i < 8; i++) colorArray.push(...color);
+      gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorArray), gl.STATIC_DRAW);
+      gl.vertexAttribPointer(aColor, 4, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(aColor);
+    }
 
-    gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+    gl.drawElements(gl.TRIANGLES, cubeIndices.length, gl.UNSIGNED_SHORT, 0);
   }
 
-  // ----------- Σχεδίαση σκηνής --------
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  let robotRotation = 0;
+  let angle = 0;
+  let animationRunning = false;
+  let fpsMode = false;
 
-  // Πατούσα αριστερή (κόκκινο)
-  const matFootLeft = mat4.create();
-  mat4.translate(matFootLeft, matFootLeft, [-0.6, -0.3, 0.1]);
-  mat4.scale(matFootLeft, matFootLeft, [0.4, 0.6, 0.2]);
-  drawCube(matFootLeft, [1, 0, 0, 1]);
+  let camPos = vec3.fromValues(6, 6, 6);
+  let camForward = vec3.fromValues(-1, -1, 0);
+  let camUp = vec3.fromValues(0, 0, 1);
 
-  // Πατούσα δεξιά (κόκκινο)
-  const matFootRight = mat4.create();
-  mat4.translate(matFootRight, matFootRight, [0.6, -0.3, 0.1]);
-  mat4.scale(matFootRight, matFootRight, [0.4, 0.6, 0.2]);
-  drawCube(matFootRight, [1, 0, 0, 1]);
+  function animateCamera() {
+    if (!animationRunning) return;
+    angle += 0.01;
+    const radius = 6;
+    camPos[0] = radius * Math.cos(angle);
+    camPos[1] = radius * Math.sin(angle);
+    camForward = vec3.fromValues(-camPos[0], -camPos[1], -camPos[2]);
+    vec3.normalize(camForward, camForward);
+    drawScene();
+    requestAnimationFrame(animateCamera);
+  }
 
-  // Πόδι αριστερό
-const matLegLeft = mat4.create();
-mat4.translate(matLegLeft, matLegLeft, [-0.6, -0.3, 0.5]);  // πάνω από πατούσα
-mat4.scale(matLegLeft, matLegLeft, [0.2, 0.2, 0.8]);
-drawCube(matLegLeft, [1, 1, 0, 1]);
+  document.getElementById("startAnimation").onclick = () => {
+  fpsMode = false;
+  animationRunning = true;
+  document.getElementById("startAnimation").innerText = "Stop Animation";
+  animateCamera();
+};
 
-// Πόδι δεξί
-const matLegRight = mat4.create();
-mat4.translate(matLegRight, matLegRight, [0.6, -0.3, 0.5]);
-mat4.scale(matLegRight, matLegRight, [0.2, 0.2, 0.8]);
-drawCube(matLegRight, [1, 1, 0, 1]);
 
-//Κορμός
-const matBody = mat4.create();
-mat4.translate(matBody, matBody, [0, -0.3, 1.4]);  // πάνω από πόδια
-mat4.scale(matBody, matBody, [1.2, 0.5, 1]);
-drawCube(matBody, [1, 0, 0, 1]);
+  document.getElementById("startFPS").onclick = () => {
+    animationRunning = false;
+    fpsMode = true;
+    drawScene();
+  };
 
-// Χέρι αριστερό
-const matArmLeft = mat4.create();
-mat4.translate(matArmLeft, matArmLeft, [-1.0, -0.3, 1.4]);
-mat4.scale(matArmLeft, matArmLeft, [0.2, 0.2, 1]);
-drawCube(matArmLeft, [1, 1, 0, 1]);
+  document.addEventListener("keydown", (e) => {
+  const moveSpeed = 0.3;
+  const right = vec3.create();
+  vec3.cross(right, camForward, camUp);
+  vec3.normalize(right, right);
 
-// Χέρι δεξί
-const matArmRight = mat4.create();
-mat4.translate(matArmRight, matArmRight, [1.0, -0.3, 1.4]);
-mat4.scale(matArmRight, matArmRight, [0.2, 0.2, 1]);
-drawCube(matArmRight, [1, 1, 0, 1]);
+  if (fpsMode) {
+    if (e.key === "w" || e.key === "W") vec3.scaleAndAdd(camPos, camPos, camForward, moveSpeed);
+    if (e.key === "s" || e.key === "S") vec3.scaleAndAdd(camPos, camPos, camForward, -moveSpeed);
+    if (e.key === "a" || e.key === "A") vec3.scaleAndAdd(camPos, camPos, right, -moveSpeed);
+    if (e.key === "d" || e.key === "D") vec3.scaleAndAdd(camPos, camPos, right, moveSpeed);
+  }
 
-//Κεφάλι 
-const matHead = mat4.create();
-mat4.translate(matHead, matHead, [0, -0.3, 2.4]);
-mat4.scale(matHead, matHead, [0.5, 0.5, 0.5]);
-drawCube(matHead, [1, 1, 0, 1]);
+  // Η περιστροφή του ρομπότ γίνεται ανεξαρτήτως mode
+  if (e.key === "a" || e.key === "A") robotRotation += 0.05;
+  if (e.key === "d" || e.key === "D") robotRotation -= 0.05;
 
+  drawScene();
+});
+
+
+  function drawScene() {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    const viewMatrix = mat4.create();
+    const camTarget = vec3.create();
+    vec3.add(camTarget, camPos, camForward);
+    mat4.lookAt(viewMatrix, camPos, camTarget, camUp);
+    gl.uniformMatrix4fv(uView, false, viewMatrix);
+
+    const projMatrix = mat4.create();
+    mat4.perspective(projMatrix, Math.PI / 3, canvas.width / canvas.height, 1.0, 100);
+    gl.uniformMatrix4fv(uProjection, false, projMatrix);
+
+    const matGround = mat4.create();
+    mat4.translate(matGround, matGround, [0, 0, -0.2]);
+    mat4.scale(matGround, matGround, [10, 10, 1.0]);
+    drawCube(matGround, [1, 1, 1, 1], true);
+
+    const matSkybox = mat4.create();
+    mat4.translate(matSkybox, matSkybox, [0, 0, 10]);
+    mat4.scale(matSkybox, matSkybox, [40, 40, 20]);
+    drawCube(matSkybox, [0.4, 0.6, 1, 1]);
+
+    const matRobot = mat4.create();
+    mat4.rotateZ(matRobot, matRobot, robotRotation);
+
+    const matFootL = mat4.clone(matRobot);
+    mat4.translate(matFootL, matFootL, [-0.6, -0.3, 0.1]);
+    mat4.scale(matFootL, matFootL, [0.4, 0.6, 0.2]);
+    drawCube(matFootL, [1, 0, 0, 1]);
+
+    const matFootR = mat4.clone(matRobot);
+    mat4.translate(matFootR, matFootR, [0.6, -0.3, 0.1]);
+    mat4.scale(matFootR, matFootR, [0.4, 0.6, 0.2]);
+    drawCube(matFootR, [1, 0, 0, 1]);
+
+    const matLegL = mat4.clone(matRobot);
+    mat4.translate(matLegL, matLegL, [-0.6, -0.3, 0.5]);
+    mat4.scale(matLegL, matLegL, [0.2, 0.2, 0.8]);
+    drawCube(matLegL, [1, 1, 0, 1]);
+
+    const matLegR = mat4.clone(matRobot);
+    mat4.translate(matLegR, matLegR, [0.6, -0.3, 0.5]);
+    mat4.scale(matLegR, matLegR, [0.2, 0.2, 0.8]);
+    drawCube(matLegR, [1, 1, 0, 1]);
+
+    const matBody = mat4.clone(matRobot);
+    mat4.translate(matBody, matBody, [0, -0.3, 1.4]);
+    mat4.scale(matBody, matBody, [1.2, 0.5, 1]);
+    drawCube(matBody, [1, 0, 0, 1]);
+
+    const matArmL = mat4.clone(matRobot);
+    mat4.translate(matArmL, matArmL, [-1.0, -0.3, 1.4]);
+    mat4.scale(matArmL, matArmL, [0.2, 0.2, 1]);
+    drawCube(matArmL, [1, 1, 0, 1]);
+
+    const matArmR = mat4.clone(matRobot);
+    mat4.translate(matArmR, matArmR, [1.0, -0.3, 1.4]);
+    mat4.scale(matArmR, matArmR, [0.2, 0.2, 1]);
+    drawCube(matArmR, [1, 1, 0, 1]);
+
+    const matHead = mat4.clone(matRobot);
+    mat4.translate(matHead, matHead, [0, -0.3, 2.4]);
+    mat4.scale(matHead, matHead, [0.5, 0.5, 0.5]);
+    drawCube(matHead, [1, 1, 0, 1]);
+  }
 };
