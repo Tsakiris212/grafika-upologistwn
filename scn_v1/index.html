@@ -48,14 +48,24 @@
 <body>
 
   <div id="ui">
-    <!-- Εδώ θα μπουν όλα τα controls σε επόμενα βήματα -->
+    <fieldset style="border:none; display:flex; flex-wrap:wrap; gap:5px;">
+  <legend style="font-weight:bold;">Θέση Κάμερας:</legend>
+  <label><input type="radio" name="cameraPos" value="LFT">Left-Front-Top</label>
+  <label><input type="radio" name="cameraPos" value="LFB">Left-Front-Bottom</label>
+  <label><input type="radio" name="cameraPos" value="LBT">Left-Back-Top</label>
+  <label><input type="radio" name="cameraPos" value="LBB">Left-Back-Bottom</label>
+  <label><input type="radio" name="cameraPos" value="RFT" checked>Right-Front-Top</label>
+  <label><input type="radio" name="cameraPos" value="RFB">Right-Front-Bottom</label>
+  <label><input type="radio" name="cameraPos" value="RBT">Right-Back-Top</label>
+  <label><input type="radio" name="cameraPos" value="RBB">Right-Back-Bottom</label>
+</fieldset>
+
     <label for="viewAngle">Γωνία Θέασης:</label>
     <input type="text" id="viewAngle" value="60">
 
     <label for="camOrthoDistance">Απόσταση Κάμερας:</label>
     <input type="text" id="camOrthoDistance" value="8">
 
-    <button id="redrawBtn">Επανασχεδίαση</button>
 
     <!-- Εδώ μπορούμε να προσθέσουμε και τα radio buttons για την κάμερα -->
   </div>

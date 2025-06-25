@@ -1,4 +1,6 @@
 window.onload = function () {
+    const mat4 = glMatrix.mat4;
+
   const canvas = document.getElementById("glcanvas");
   const gl = canvas.getContext("webgl");
 
@@ -154,4 +156,50 @@ window.onload = function () {
   gl.clearColor(0.2, 0.2, 0.2, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+
+   function redrawScene() {
+  const viewAngle = parseFloat(document.getElementById("viewAngle").value);
+  const camDistance = parseFloat(document.getElementById("camOrthoDistance").value);
+
+  const radioValue = document.querySelector('input[name="cameraPos"]:checked')?.value;
+
+  // Default κάμερα
+  let eyeX = camDistance;
+  let eyeY = camDistance;
+  let eyeZ = camDistance;
+
+  switch (radioValue) {
+    case "LFT": eyeX = -camDistance; eyeY = -camDistance; eyeZ =  camDistance; break;
+    case "LFB": eyeX = -camDistance; eyeY = -camDistance; eyeZ = -camDistance; break;
+    case "LBT": eyeX = -camDistance; eyeY =  camDistance; eyeZ =  camDistance; break;
+    case "LBB": eyeX = -camDistance; eyeY =  camDistance; eyeZ = -camDistance; break;
+    case "RFT": eyeX =  camDistance; eyeY = -camDistance; eyeZ =  camDistance; break;
+    case "RFB": eyeX =  camDistance; eyeY = -camDistance; eyeZ = -camDistance; break;
+    case "RBT": eyeX =  camDistance; eyeY =  camDistance; eyeZ =  camDistance; break;
+    case "RBB": eyeX =  camDistance; eyeY =  camDistance; eyeZ = -camDistance; break;
+  }
+
+  const projMatrix = mat4.create();
+  mat4.perspective(projMatrix, viewAngle * Math.PI / 180, 1, 0.001, camDistance * 10);
+  gl.uniformMatrix4fv(uProjection, false, projMatrix);
+
+  const viewMatrix = mat4.create();
+  mat4.lookAt(viewMatrix, [eyeX, eyeY, eyeZ], [0, 0, 0], [0, 0, 1]);
+  gl.uniformMatrix4fv(uView, false, viewMatrix);
+
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+}
+document.getElementById("viewAngle").addEventListener("input", redrawScene);
+document.getElementById("camOrthoDistance").addEventListener("input", redrawScene);
+
+
+  const radioButtons = document.querySelectorAll('input[name="cameraPos"]');
+radioButtons.forEach(radio => {
+  radio.addEventListener('change', redrawScene);
+});
+
+
 };
+
+
