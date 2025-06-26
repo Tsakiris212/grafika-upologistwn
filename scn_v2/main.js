@@ -1,4 +1,4 @@
-// main.js – Βήμα 11: Animation Mode & FPS Camera Mode με toggle κουμπιά + Περιστροφή Ρομπότ
+// main.js – Βήμα 12: Animation Mode, FPS Camera, και περιστροφή μελών ρομπότ με Q/E
 
 async function loadShaderSource(url) {
   const response = await fetch(url);
@@ -134,9 +134,15 @@ window.onload = async function () {
   let angle = 0;
   let animationRunning = false;
   let fpsMode = false;
+  let selectedPart = "rightArm";
 
-  let leftArmAngle = 0;
-  let leftArmDirection = 1;
+  const partRotations = {
+    rightArm: 0,
+    leftArm: 0,
+    head: 0,
+    rightLeg: 0,
+    leftLeg: 0
+  };
 
   let camPos = vec3.fromValues(6, 6, 6);
   let camForward = vec3.fromValues(-1, -1, 0);
@@ -154,31 +160,17 @@ window.onload = async function () {
     requestAnimationFrame(animateCamera);
   }
 
- document.getElementById("startAnimation").onclick = () => {
-  if (animationRunning) {
-    animationRunning = false;
-    document.getElementById("startAnimation").innerText = "Start Animation";
-  } else {
-    fpsMode = false;
-    animationRunning = true;
-    document.getElementById("startAnimation").innerText = "Stop Animation";
-    animateCamera();
-  }
-  canvas.addEventListener("wheel", function (e) {
-    const selectedPart = document.querySelector('input[name="part"]:checked')?.value;
-    if (selectedPart === "leftArmMove") {
-      // Ρύθμιση γωνίας με βάση τη ροδέλα
-      leftArmAngle += e.deltaY * -0.005;
-  
-      // Περιορισμός γωνίας
-      leftArmAngle = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, leftArmAngle));
-  
-      drawScene();
+  document.getElementById("startAnimation").onclick = () => {
+    if (animationRunning) {
+      animationRunning = false;
+      document.getElementById("startAnimation").innerText = "Start Animation";
+    } else {
+      fpsMode = false;
+      animationRunning = true;
+      document.getElementById("startAnimation").innerText = "Stop Animation";
+      animateCamera();
     }
-  });
-};
-σ
-
+  };
 
   document.getElementById("startFPS").onclick = () => {
     animationRunning = false;
@@ -186,31 +178,30 @@ window.onload = async function () {
     drawScene();
   };
 
+  document.querySelectorAll('input[name="part"]').forEach(r => {
+    r.addEventListener("change", () => {
+      selectedPart = document.querySelector('input[name="part"]:checked').value;
+    });
+  });
+
   document.addEventListener("keydown", (e) => {
-  const moveSpeed = 0.3;
-  const right = vec3.create();
-  vec3.cross(right, camForward, camUp);
-  vec3.normalize(right, right);
+    const moveSpeed = 0.3;
+    const right = vec3.create();
+    vec3.cross(right, camForward, camUp);
+    vec3.normalize(right, right);
 
-  if (fpsMode) {
-  if (e.key === "w" || e.key === "W") vec3.scaleAndAdd(camPos, camPos, camForward, moveSpeed);
-  if (e.key === "s" || e.key === "S") vec3.scaleAndAdd(camPos, camPos, camForward, -moveSpeed);
-  if (e.key === "a" || e.key === "A") vec3.scaleAndAdd(camPos, camPos, right, -moveSpeed);
-  if (e.key === "d" || e.key === "D") vec3.scaleAndAdd(camPos, camPos, right, moveSpeed);
-}
+    if (fpsMode) {
+      if (e.key === "w" || e.key === "W") vec3.scaleAndAdd(camPos, camPos, camForward, moveSpeed);
+      if (e.key === "s" || e.key === "S") vec3.scaleAndAdd(camPos, camPos, camForward, -moveSpeed);
+      if (e.key === "a" || e.key === "A") vec3.scaleAndAdd(camPos, camPos, right, -moveSpeed);
+      if (e.key === "d" || e.key === "D") vec3.scaleAndAdd(camPos, camPos, right, moveSpeed);
+    }
 
-// ανεξαρτήτως mode, περιστροφή ρομπότ
-if (e.key === "a" || e.key === "A") robotRotation += 0.05;
-if (e.key === "d" || e.key === "D") robotRotation -= 0.05;
+    if (e.key === "q" || e.key === "Q") partRotations[selectedPart] += 0.05;
+    if (e.key === "e" || e.key === "E") partRotations[selectedPart] -= 0.05;
 
-
-  // Η περιστροφή του ρομπότ γίνεται ανεξαρτήτως mode
-  if (e.key === "a" || e.key === "A") robotRotation += 0.05;
-  if (e.key === "d" || e.key === "D") robotRotation -= 0.05;
-
-  drawScene();
-});
-
+    drawScene();
+  });
 
   function drawScene() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -249,12 +240,14 @@ if (e.key === "d" || e.key === "D") robotRotation -= 0.05;
     drawCube(matFootR, [1, 0, 0, 1]);
 
     const matLegL = mat4.clone(matRobot);
-    mat4.translate(matLegL, matLegL, [-0.4, -0.3, 0.5]);
+    mat4.translate(matLegL, matLegL, [-0.6, -0.3, 0.5]);
+    mat4.rotateZ(matLegL, matLegL, partRotations.leftLeg);
     mat4.scale(matLegL, matLegL, [0.2, 0.2, 0.8]);
     drawCube(matLegL, [1, 1, 0, 1]);
 
     const matLegR = mat4.clone(matRobot);
     mat4.translate(matLegR, matLegR, [0.6, -0.3, 0.5]);
+    mat4.rotateZ(matLegR, matLegR, partRotations.rightLeg);
     mat4.scale(matLegR, matLegR, [0.2, 0.2, 0.8]);
     drawCube(matLegR, [1, 1, 0, 1]);
 
@@ -264,28 +257,21 @@ if (e.key === "d" || e.key === "D") robotRotation -= 0.05;
     drawCube(matBody, [1, 0, 0, 1]);
 
     const matArmL = mat4.clone(matRobot);
-mat4.translate(matArmL, matArmL, [-0.7, -0.3, 1.4]);
-
-const selectedPart = document.querySelector('input[name="part"]:checked')?.value;
-if (selectedPart === "leftArmMove") {
-  mat4.rotateX(matArmL, matArmL, leftArmAngle);
-}
-
-mat4.scale(matArmL, matArmL, [0.2, 0.2, 1]);
-drawCube(matArmL, [1, 1, 0, 1]);
+    mat4.translate(matArmL, matArmL, [-1.0, -0.3, 1.4]);
+    mat4.rotateZ(matArmL, matArmL, partRotations.leftArm);
+    mat4.scale(matArmL, matArmL, [0.2, 0.2, 1]);
+    drawCube(matArmL, [1, 1, 0, 1]);
 
     const matArmR = mat4.clone(matRobot);
-    mat4.translate(matArmR, matArmR, [0.7, -0.3, 1.4]);
+    mat4.translate(matArmR, matArmR, [1.0, -0.3, 1.4]);
+    mat4.rotateZ(matArmR, matArmR, partRotations.rightArm);
     mat4.scale(matArmR, matArmR, [0.2, 0.2, 1]);
     drawCube(matArmR, [1, 1, 0, 1]);
 
     const matHead = mat4.clone(matRobot);
     mat4.translate(matHead, matHead, [0, -0.3, 2.4]);
+    mat4.rotateZ(matHead, matHead, partRotations.head);
     mat4.scale(matHead, matHead, [0.5, 0.5, 0.5]);
     drawCube(matHead, [1, 1, 0, 1]);
-  }
-
-  if (selectedPart === "leftArmMove") {
-    requestAnimationFrame(drawScene);
   }
 };
