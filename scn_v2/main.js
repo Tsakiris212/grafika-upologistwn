@@ -135,6 +135,9 @@ window.onload = async function () {
   let animationRunning = false;
   let fpsMode = false;
 
+  let leftArmAngle = 0;
+  let leftArmDirection = 1;
+
   let camPos = vec3.fromValues(6, 6, 6);
   let camForward = vec3.fromValues(-1, -1, 0);
   let camUp = vec3.fromValues(0, 0, 1);
@@ -161,6 +164,18 @@ window.onload = async function () {
     document.getElementById("startAnimation").innerText = "Stop Animation";
     animateCamera();
   }
+  canvas.addEventListener("wheel", function (e) {
+    const selectedPart = document.querySelector('input[name="part"]:checked')?.value;
+    if (selectedPart === "leftArmMove") {
+      // Ρύθμιση γωνίας με βάση τη ροδέλα
+      leftArmAngle += e.deltaY * -0.005;
+  
+      // Περιορισμός γωνίας
+      leftArmAngle = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, leftArmAngle));
+  
+      drawScene();
+    }
+  });
 };
 σ
 
@@ -234,7 +249,7 @@ if (e.key === "d" || e.key === "D") robotRotation -= 0.05;
     drawCube(matFootR, [1, 0, 0, 1]);
 
     const matLegL = mat4.clone(matRobot);
-    mat4.translate(matLegL, matLegL, [-0.6, -0.3, 0.5]);
+    mat4.translate(matLegL, matLegL, [-0.4, -0.3, 0.5]);
     mat4.scale(matLegL, matLegL, [0.2, 0.2, 0.8]);
     drawCube(matLegL, [1, 1, 0, 1]);
 
@@ -249,12 +264,18 @@ if (e.key === "d" || e.key === "D") robotRotation -= 0.05;
     drawCube(matBody, [1, 0, 0, 1]);
 
     const matArmL = mat4.clone(matRobot);
-    mat4.translate(matArmL, matArmL, [-1.0, -0.3, 1.4]);
-    mat4.scale(matArmL, matArmL, [0.2, 0.2, 1]);
-    drawCube(matArmL, [1, 1, 0, 1]);
+mat4.translate(matArmL, matArmL, [-0.7, -0.3, 1.4]);
+
+const selectedPart = document.querySelector('input[name="part"]:checked')?.value;
+if (selectedPart === "leftArmMove") {
+  mat4.rotateX(matArmL, matArmL, leftArmAngle);
+}
+
+mat4.scale(matArmL, matArmL, [0.2, 0.2, 1]);
+drawCube(matArmL, [1, 1, 0, 1]);
 
     const matArmR = mat4.clone(matRobot);
-    mat4.translate(matArmR, matArmR, [1.0, -0.3, 1.4]);
+    mat4.translate(matArmR, matArmR, [0.7, -0.3, 1.4]);
     mat4.scale(matArmR, matArmR, [0.2, 0.2, 1]);
     drawCube(matArmR, [1, 1, 0, 1]);
 
@@ -262,5 +283,9 @@ if (e.key === "d" || e.key === "D") robotRotation -= 0.05;
     mat4.translate(matHead, matHead, [0, -0.3, 2.4]);
     mat4.scale(matHead, matHead, [0.5, 0.5, 0.5]);
     drawCube(matHead, [1, 1, 0, 1]);
+  }
+
+  if (selectedPart === "leftArmMove") {
+    requestAnimationFrame(drawScene);
   }
 };
